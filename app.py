@@ -23,7 +23,7 @@ st.set_page_config(
 
 # URL de Google Drive (modo descarga directa)
 # ID del archivo: 1uWhHIsl7_Y3jLa30kNvEl-mtRakesml7
-MODEL_URL = "https://drive.google.com/uc?id=1uWhHIsl7_Y3jLa30kNvEl-mtRakesml7"
+MODEL_URL = st.secrets["private"]["MODEL_URL"]
 MODEL_PATH = "rf_model.pkl"
 
 
@@ -228,3 +228,4 @@ if st.button("Predecir PM2.5"):
 
     # Barra de progreso relativa (asumiendo 0–200 µg/m³ como rango típico)
     st.progress(min(y_pred / 200.0, 1.0))
+
