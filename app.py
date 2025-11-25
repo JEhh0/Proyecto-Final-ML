@@ -1,5 +1,5 @@
-import datetime
 import os
+import datetime
 
 import joblib
 import numpy as np
@@ -21,8 +21,7 @@ st.set_page_config(
 # 1. Descarga y carga de artefactos
 # =========================
 
-# URL de Google Drive (modo descarga directa)
-# ID del archivo: 1uWhHIsl7_Y3jLa30kNvEl-mtRakesml7
+# URL del modelo desde secrets de Streamlit (NO visible en GitHub)
 MODEL_URL = st.secrets["private"]["MODEL_URL"]
 MODEL_PATH = "rf_model.pkl"
 
@@ -32,7 +31,7 @@ def download_model_from_drive():
     if os.path.exists(MODEL_PATH):
         return
 
-    st.write("Descargando modelo desde Google Drive... (solo la primera vez)")
+    st.write("Descargando modelo desde almacenamiento seguro... (solo la primera vez)")
     import gdown  # se instala vía requirements.txt
 
     gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
@@ -72,16 +71,36 @@ st.markdown(
 # =========================
 st.subheader("Condiciones de entrada")
 
-# Fecha y hora
-col_time1, col_time2 = st.columns(2)
+# --- Mes, día y hora (sin mostrar año) ---
+col_time1, col_time2, col_time3 = st.columns(3)
+
+month_names = {
+    1: "Enero",
+    2: "Febrero",
+    3: "Marzo",
+    4: "Abril",
+    5: "Mayo",
+    6: "Junio",
+    7: "Julio",
+    8: "Agosto",
+    9: "Septiembre",
+    10: "Octubre",
+    11: "Noviembre",
+    12: "Diciembre",
+}
+
 with col_time1:
-    fecha = st.date_input(
-        "Fecha",
-        value=datetime.date(2016, 1, 1),
-        min_value=datetime.date(2013, 3, 1),
-        max_value=datetime.date(2017, 2, 28),
+    month = st.selectbox(
+        "Mes",
+        options=list(range(1, 13)),
+        format_func=lambda m: month_names[m],
+        index=0,
     )
+
 with col_time2:
+    day = st.slider("Día del mes", 1, 31, 15, 1)
+
+with col_time3:
     hour = st.slider("Hora del día", 0, 23, 8, 1)
 
 # Clima
@@ -97,7 +116,7 @@ hum = st.slider("Humedad relativa aproximada (%)", 0, 100, 50, 1)
 
 pm_prev = st.slider(
     "PM2.5 promedio últimas horas (µg/m³) (aprox.)",
-    0.0, 250.0, 20.0, 1.0
+    0.0, 250.0, 20.0, 1.0,
 )
 
 # Estación (one-hot)
@@ -150,14 +169,14 @@ def build_feature_vector():
     - Usa valores ingresados por el usuario.
     - Lags y medias móviles de PM se rellenan con pm_prev.
     - Estación y dirección del viento se codifican como one-hot.
+    - El año se fija a un valor de referencia (2016) dentro del rango del dataset.
     """
-    # Crear diccionario con TODAS las columnas inicializadas en 0.0
     data = {col: 0.0 for col in feature_cols}
 
     # ---- Variables temporales ----
-    data["year"] = fecha.year
-    data["month"] = fecha.month
-    data["day"] = fecha.day
+    data["year"] = 2016  # año de referencia
+    data["month"] = month
+    data["day"] = day
     data["hour"] = hour
 
     # ---- Variables meteorológicas ----
@@ -190,7 +209,6 @@ def build_feature_vector():
         if wd_col in data:
             data[wd_col] = 1.0
 
-    # Construir DataFrame en el orden correcto de columnas
     row = pd.DataFrame([[data[col] for col in feature_cols]], columns=feature_cols)
     return row
 
@@ -199,18 +217,12 @@ def build_feature_vector():
 # 4. Predicción y visualización
 # =========================
 if st.button("Predecir PM2.5"):
-    # Construir features
     X = build_feature_vector()
-
-    # Escalamiento
     X_scaled = scaler.transform(X)
-
-    # Predicción
     y_pred = float(model.predict(X_scaled)[0])
 
     st.subheader(f"PM2.5 estimado: {y_pred:.2f} µg/m³")
 
-    # Clasificación simple de calidad del aire (puedes ajustar umbrales)
     if y_pred <= 15:
         nivel = "Buena"
         color = "🟢"
@@ -226,6 +238,4 @@ if st.button("Predecir PM2.5"):
 
     st.write(f"Nivel de calidad del aire: {color} **{nivel}**")
 
-    # Barra de progreso relativa (asumiendo 0–200 µg/m³ como rango típico)
     st.progress(min(y_pred / 200.0, 1.0))
-
