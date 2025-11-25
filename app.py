@@ -1,4 +1,6 @@
 import datetime
+import os
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -16,11 +18,33 @@ st.set_page_config(
 
 
 # =========================
-# 1. Cargar artefactos
+# 1. Descarga y carga de artefactos
 # =========================
+
+# URL de Google Drive (modo descarga directa)
+# ID del archivo: 1uWhHIsl7_Y3jLa30kNvEl-mtRakesml7
+MODEL_URL = "https://drive.google.com/uc?id=1uWhHIsl7_Y3jLa30kNvEl-mtRakesml7"
+MODEL_PATH = "rf_model.pkl"
+
+
+def download_model_from_drive():
+    """Descarga el modelo desde Google Drive si no existe localmente."""
+    if os.path.exists(MODEL_PATH):
+        return
+
+    st.write("Descargando modelo desde Google Drive... (solo la primera vez)")
+    import gdown  # se instala vía requirements.txt
+
+    gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+
+
 @st.cache_resource
 def load_artifacts():
-    model = joblib.load("rf_model.pkl")
+    # 1) Descargar modelo si hace falta
+    download_model_from_drive()
+
+    # 2) Cargar modelo, scaler y lista de columnas
+    model = joblib.load(MODEL_PATH)
     scaler = joblib.load("scaler.pkl")
     feature_cols = joblib.load("feature_cols.pkl")
     return model, scaler, feature_cols
